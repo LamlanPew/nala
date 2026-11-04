@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#03051c">
+<title>Floating Love Hearts</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    height: 100dvh;
+    overflow: hidden;
+    touch-action: none;
+    background: linear-gradient(to bottom, #03051c 0%, #101b52 45%, #354fa8 100%);
+    font-family: Arial, sans-serif;
+}
+
+/* Background */
+#universe {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+}
+
+/* Small hearts */
+.small-heart {
+    position: absolute;
+    bottom: -30px;
+    color: white;
+    animation: smallFloat linear forwards;
+    text-shadow: 0 0 8px currentColor;
+    pointer-events: none;
+}
+
+@keyframes smallFloat {
+    0%   { transform: translateY(0) rotate(0deg) scale(.7); opacity: 0; }
+    15%  { opacity: 1; }
+    80%  { opacity: .9; }
+    100% { transform: translateY(-115vh) rotate(25deg) scale(1.2); opacity: 0; }
+}
+
+/* Big heart (pembungkus: naik ke atas) */
+.big-heart {
+    position: absolute;
+    bottom: calc(var(--size) * -1.2);
+    width: var(--size);
+    height: var(--size);
+    animation: bigFloat var(--duration) linear forwards;
+    pointer-events: none;
+}
+
+/* Isi hati: goyang pelan + berdenyut */
+.heart-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    animation:
+        sway 3.4s ease-in-out infinite alternate,
+        beat 1.6s ease-in-out infinite;
+    transform-origin: 50% 80%;
+}
+
+.heart-body svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 6px 14px rgba(255, 60, 110, .35));
+}
+
+.heart-text {
+    position: absolute;
+    top: 41%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 62%;
+    color: white;
+    text-align: center;
+    font-size: var(--font);
+    font-weight: bold;
+    line-height: 1.35;
+    text-shadow: 0 1px 4px rgba(120, 0, 40, .45);
+    min-height: 3em;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+.heart-text::after {
+    content: "|";
+    animation: blink 0.7s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+@keyframes sway {
+    from { transform: rotate(-6deg) translateX(-8px); }
+    to   { transform: rotate(6deg)  translateX(8px); }
+}
+
+@keyframes beat {
+    0%, 100% { scale: 1; }
+    50%      { scale: 1.05; }
+}
+
+@keyframes bigFloat {
+    0%   { transform: translateY(0) scale(.85); opacity: 0; }
+    10%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { transform: translateY(calc(-100dvh - var(--size) * 1.5)) scale(1.05); opacity: 0; }
+}
+
+/* Tombol musik */
+#music-btn {
+    position: fixed;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    right: 14px;
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+    color: white;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div id="universe"></div>
+
+<!-- Taruh file lagu bernama lagu.mp3 di folder yang sama -->
+<audio id="music" src="https://res.cloudinary.com/dpktfiwxj/video/upload/v1793800813/7664673336349936404_vYUjjoqG_ydni5v.mp3" autoplay loop preload="auto"></audio>
+
+<button id="music-btn" aria-label="Putar / jeda musik">🔊</button>
+
+<!-- Warna hati (dipakai bersama oleh semua hati besar) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+        <radialGradient id="heartGrad" cx="35%" cy="28%" r="85%">
+            <stop offset="0%"   stop-color="#ff9ec0"/>
+            <stop offset="45%"  stop-color="#ff4f86"/>
+            <stop offset="100%" stop-color="#d81b5a"/>
+        </radialGradient>
+    </defs>
+</svg>
+
+<script>
+const universe = document.getElementById("universe");
+const music = document.getElementById("music");
+const musicBtn = document.getElementById("music-btn");
+
+// Kalimat di dalam hati
+const messages = [
+    "I'm lookin' back on things I've done",
+    "I never wanna play the same old part",
+    "I'll keep you in the dark (keep you in the dark)",
+    "Now let me show you the shape of my heart",
+    "Looking back on the things I've done",
+    "I was trying to be someone (trying to be someone)"
+];
+
+let messageIndex = 0;
+
+const colors = ["#ffffff", "#ff4d9d", "#ff8fc7", "#f7d9ff"];
+
+// Posisi bergantian kiri -> kanan -> tengah supaya hati besar tidak bertumpuk
+const lanes = [0.05, 0.95, 0.5, 0.95, 0.05, 0.5];
+let laneIndex = 0;
+
+// Membuat hati kecil
+function createSmallHeart() {
+    const heart = document.createElement("div");
+
+    heart.className = "small-heart";
+    heart.innerHTML = Math.random() > 0.5 ? "♥" : "♡";
+
+    heart.style.left = Math.random() * 100 + "%";
+    heart.style.color = colors[Math.floor(Math.random() * colors.length)];
+    heart.style.fontSize = (Math.random() * 12 + 9) + "px";
+
+    const duration = Math.random() * 5 + 5;
+    heart.style.animationDuration = duration + "s";
+
+    universe.appendChild(heart);
+    setTimeout(() => heart.remove(), duration * 1000);
+}
+
+// Membuat hati besar
+function createBigHeart() {
+    const heart = document.createElement("div");
+    heart.className = "big-heart";
+
+    // Ukuran menyesuaikan lebar layar HP
+    const base = Math.min(window.innerWidth * 0.62, 260);
+    const size = base * (0.85 + Math.random() * 0.15);
+    const duration = 12;
+
+    heart.style.setProperty("--size", size + "px");
+    heart.style.setProperty("--duration", duration + "s");
+    heart.style.setProperty("--font", Math.max(11, Math.min(size * 0.075, 17)) + "px");
+
+    // Posisi horizontal berdasarkan jalur, sedikit diacak
+    const maxLeft = window.innerWidth - size;
+    const lane = lanes[laneIndex];
+    laneIndex = (laneIndex + 1) % lanes.length;
+    const jitter = (Math.random() - 0.5) * 0.12;
+    const left = Math.max(0, Math.min(maxLeft, (lane + jitter) * maxLeft));
+    heart.style.left = left + "px";
+
+    // Lirik berurutan
+    const message = messages[messageIndex];
+    messageIndex = (messageIndex + 1) % messages.length;
+
+    heart.innerHTML = `
+        <div class="heart-body">
+            <svg viewBox="0 0 512 480">
+                <path fill="url(#heartGrad)" d="
+                    M256 456
+                    C236 440 40 310 40 180
+                    C40 90 105 40 170 40
+                    C212 40 245 62 256 98
+                    C267 62 300 40 342 40
+                    C407 40 472 90 472 180
+                    C472 310 276 440 256 456 Z
+                "/>
+                <ellipse cx="150" cy="110" rx="52" ry="30"
+                    fill="#fff" opacity=".28"
+                    transform="rotate(-32 150 110)"/>
+            </svg>
+            <div class="heart-text"></div>
+        </div>
+    `;
+
+    universe.appendChild(heart);
+
+    // Efek mengetik
+    const textElement = heart.querySelector(".heart-text");
+    let characterIndex = 0;
+
+    const typing = setInterval(() => {
+        if (characterIndex < message.length) {
+            textElement.textContent += message.charAt(characterIndex);
+            characterIndex++;
+        } else {
+            clearInterval(typing);
+        }
+    }, 65);
+
+    setTimeout(() => {
+        clearInterval(typing);
+        heart.remove();
+    }, duration * 1000);
+}
+
+// Tombol musik: putar / jeda
+musicBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (music.paused) {
+        music.play().catch(() => {});
+        musicBtn.textContent = "🔊";
+    } else {
+        music.pause();
+        musicBtn.textContent = "🔇";
+    }
+});
+
+// Autoplay: coba putar langsung. Jika diblokir browser,
+// lagu otomatis mulai pada sentuhan pertama di layar.
+music.volume = 0.7;
+music.play().catch(() => {
+    const unlock = () => {
+        music.play().then(() => { musicBtn.textContent = "🔊"; }).catch(() => {});
+        ["touchstart", "click", "keydown"].forEach(ev =>
+            document.removeEventListener(ev, unlock));
+    };
+    ["touchstart", "click", "keydown"].forEach(ev =>
+        document.addEventListener(ev, unlock, { once: true }));
+});
+
+// Animasi otomatis langsung jalan
+setInterval(createSmallHeart, 220);
+setInterval(createBigHeart, 4600);
+createBigHeart();
+</script>
+
+</body>
+</html>
